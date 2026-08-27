@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from database import initialize_database, get_all_tasks, get_task_by_id
+from database import initialize_database, get_all_tasks, get_task_by_id, create_task
 
 app = FastAPI()
 initialize_database()
@@ -46,20 +46,11 @@ def read_task(task_id: int):
     return task
 
 @app.post("/tasks", status_code=201)
-def create_task(task: TaskCreate):
-    if not task.title or not task.title.strip():
-        raise HTTPException(status_code=400, detail="Title is required")
-
-    new_id = max(t["id"] for t in tasks) + 1
-
-    new_task = {
-        "id": new_id,
-        "title": task.title,
-        "done": False
-    }
-
-    tasks.append(new_task)
-
+def create_task_endpoint(task_data: TaskCreate):
+    if not task_data.title or not task_data.title.strip():
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+        
+    new_task = create_task(task_data.title.strip())
     return new_task
 
 
