@@ -153,3 +153,25 @@ The `.venv/` directory is excluded from Git using `.gitignore`.
 This project currently uses an in-memory list to store tasks.
 
 Because the tasks are stored in memory, all task data will be lost when the server restarts.
+
+# Task Management API (SQLite Backed)
+
+A persistent RESTful CRUD API built with **FastAPI** and **SQLite**, created for FlyRank Internship Week 3 (Assignment A2).
+
+## Why SQLite?
+SQLite was chosen for this project because:
+- **Zero Configuration:** Runs as a self-contained, serverless engine requiring no database server setup.
+- **Single-File Storage:** The entire database resides in a lightweight file (`tasks.db`).
+- **Persistence:** Replaces in-memory storage so task data survives application restarts.
+
+## Database Setup & Architecture
+- **Location:** `tasks.db` (auto-created on app startup and listed in `.gitignore` so each clone starts fresh).
+- **Schema:**
+  - `id`: `INTEGER PRIMARY KEY`
+  - `title`: `TEXT NOT NULL`
+  - `done`: `BOOLEAN NOT NULL`
+
+## How to Run
+1. Activate your virtual environment:
+   ```powershell
+   .venv\Scripts\activate
