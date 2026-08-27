@@ -34,3 +34,35 @@ def initialize_database():
 
     connection.commit()
     connection.close()
+    
+def get_all_tasks():
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute("SELECT id, title, done FROM tasks")
+    rows = cursor.fetchall()
+    connection.close()
+    
+    tasks = []
+    for row in rows:
+        tasks.append({
+            "id": row[0],
+            "title": row[1],
+            "done": bool(row[2])
+        })
+    return tasks
+
+def get_task_by_id(task_id: int):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute("SELECT id, title, done FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+    connection.close()
+    
+    if row is None:
+        return None
+        
+    return {
+        "id": row[0],
+        "title": row[1],
+        "done": bool(row[2])
+    }
