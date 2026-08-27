@@ -83,3 +83,36 @@ def create_task(title: str):
         "title": title,
         "done": False
     }
+    
+def update_task(task_id: int, title: str, done: bool):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute(
+        "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+        (title, done, task_id)
+    )
+    rows_affected = cursor.rowcount
+    connection.commit()
+    connection.close()
+
+    if rows_affected == 0:
+        return None
+
+    return {
+        "id": task_id,
+        "title": title,
+        "done": done
+    }
+
+def delete_task(task_id: int):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute(
+        "DELETE FROM tasks WHERE id = ?",
+        (task_id,)
+    )
+    rows_affected = cursor.rowcount
+    connection.commit()
+    connection.close()
+
+    return rows_affected > 0

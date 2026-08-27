@@ -1,6 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from database import initialize_database, get_all_tasks, get_task_by_id, create_task
+from database import (
+    initialize_database,
+    get_all_tasks,
+    get_task_by_id,
+    create_task,
+    update_task as db_update_task,
+    delete_task as db_delete_task
+)
 
 app = FastAPI()
 initialize_database()
@@ -55,21 +62,19 @@ def create_task_endpoint(task_data: TaskCreate):
 
 
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, task_update: TaskUpdate):
-    for task in tasks:
-        if task["id"] == task_id:
-            task["title"] = task_update.title
-            task["done"] = task_update.done
-            return task
+def update_task_endpoint(task_id: int, task_update: TaskUpdate):
+    if not task_update.title or not task_update.title.strip():
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
 
-    raise HTTPException(status_code=404, detail="Task not found")
+    updated = db_update_task(task_id, task_update.title.strip(), task_update.done)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Task not found")
 
+    return updated
 
 @app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id: int):
-    for task in tasks:
-        if task["id"] == task_id:
-            tasks.remove(task)
-            return
-
-    raise HTTPException(status_code=404, detail="Task not found")
+def delete_task_endpoint(task_id: int):
+    success = db_delete_task(task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return
