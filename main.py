@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from database import initialize_database
 
 app = FastAPI()
-
+initialize_database()
 
 class TaskCreate(BaseModel):
     title: str | None = None
