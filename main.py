@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
+import database
 from database import (
     initialize_database,
     get_all_tasks,
@@ -10,18 +11,17 @@ from database import (
 )
 
 app = FastAPI()
-initialize_database()
+
+@app.on_event("startup")
+def startup_event():
+    initialize_database()
 
 class TaskCreate(BaseModel):
     title: str | None = None
 
-
 class TaskUpdate(BaseModel):
     title: str
     done: bool
-
-
-
 
 @app.get("/")
 def root():
@@ -31,11 +31,31 @@ def root():
         "endpoints": ["/tasks"]
     }
 
-
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+def health_check():
+    try:
+        # Check if database module has get_db or get_connection
+        if hasattr(database, "get_db"):
+            conn = database.get_db()
+        elif hasattr(database, "get_connection"):
+            conn = database.get_connection()
+        elif hasattr(database, "connect"):
+            conn = database.connect()
+        else:
+            # Fallback direct execution check via get_all_tasks
+            get_all_tasks()
+            return {"status": "ok", "database": "connected"}
 
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1;")
+        cursor.close()
+        conn.close()
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"status": "error", "database": "disconnected", "error": str(e)}
+        )
 
 @app.get("/tasks")
 def read_tasks():
@@ -55,7 +75,6 @@ def create_task_endpoint(task_data: TaskCreate):
         
     new_task = create_task(task_data.title.strip())
     return new_task
-
 
 @app.put("/tasks/{task_id}")
 def update_task_endpoint(task_id: int, task_update: TaskUpdate):
