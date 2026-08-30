@@ -21,10 +21,6 @@ class TaskUpdate(BaseModel):
     done: bool
 
 
-tasks = [
-    {"id": 1, "title": "Learn FastAPI", "done": False},
-    {"id": 2, "title": "Build CRUD API", "done": False},
-]
 
 
 @app.get("/")

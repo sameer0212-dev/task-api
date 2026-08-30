@@ -1,118 +1,82 @@
-import sqlite3
+import os
+import psycopg
+from psycopg.rows import dict_row
+from dotenv import load_dotenv
 
-DATABASE_NAME = "tasks.db"
+load_dotenv()
 
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_connection():
-    return sqlite3.connect(DATABASE_NAME)
-
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 def initialize_database():
-    connection = get_connection()
-    cursor = connection.cursor()
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            # 1. Create table using PostgreSQL SERIAL primary key
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    done BOOLEAN NOT NULL DEFAULT FALSE
+                );
+            """)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY,
-            title TEXT NOT NULL,
-            done BOOLEAN NOT NULL
-        )
-    """)
+            # 2. Check row count for conditional seeding
+            cur.execute("SELECT COUNT(*) FROM tasks;")
+            count = cur.fetchone()["count"]
 
-    cursor.execute("SELECT COUNT(*) FROM tasks")
-    task_count = cursor.fetchone()[0]
+            # 3. Seed exactly 3 tasks ONLY if empty
+            if count == 0:
+                cur.executemany(
+                    "INSERT INTO tasks (title, done) VALUES (%s, %s);",
+                    [
+                        ("Learn FastAPI", False),
+                        ("Build CRUD API", False),
+                        ("Containerize Stack with Postgres", False),
+                    ]
+                )
+        conn.commit()
 
-    if task_count == 0:
-        cursor.executemany(
-            "INSERT INTO tasks (title, done) VALUES (?, ?)",
-            [
-                ("Learn FastAPI", False),
-                ("Build CRUD API", False),
-                ("Connect CRUD to SQLite", False),
-            ]
-        )
-
-    connection.commit()
-    connection.close()
-    
 def get_all_tasks():
-    connection = get_connection()
-    cursor = connection.cursor()
-    cursor.execute("SELECT id, title, done FROM tasks")
-    rows = cursor.fetchall()
-    connection.close()
-    
-    tasks = []
-    for row in rows:
-        tasks.append({
-            "id": row[0],
-            "title": row[1],
-            "done": bool(row[2])
-        })
-    return tasks
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, title, done FROM tasks ORDER BY id ASC;")
+            return cur.fetchall()
 
 def get_task_by_id(task_id: int):
-    connection = get_connection()
-    cursor = connection.cursor()
-    cursor.execute("SELECT id, title, done FROM tasks WHERE id = ?", (task_id,))
-    row = cursor.fetchone()
-    connection.close()
-    
-    if row is None:
-        return None
-        
-    return {
-        "id": row[0],
-        "title": row[1],
-        "done": bool(row[2])
-    }
-    
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, title, done FROM tasks WHERE id = %s;", (task_id,))
+            return cur.fetchone()
+
 def create_task(title: str):
-    connection = get_connection()
-    cursor = connection.cursor()
-    cursor.execute(
-        "INSERT INTO tasks (title, done) VALUES (?, ?)",
-        (title, False)
-    )
-    new_id = cursor.lastrowid
-    connection.commit()
-    connection.close()
-    
-    return {
-        "id": new_id,
-        "title": title,
-        "done": False
-    }
-    
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            # RETURNING gives us the newly auto-generated Postgres ID directly
+            cur.execute(
+                "INSERT INTO tasks (title, done) VALUES (%s, %s) RETURNING id, title, done;",
+                (title, False)
+            )
+            new_task = cur.fetchone()
+        conn.commit()
+        return new_task
+
 def update_task(task_id: int, title: str, done: bool):
-    connection = get_connection()
-    cursor = connection.cursor()
-    cursor.execute(
-        "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
-        (title, done, task_id)
-    )
-    rows_affected = cursor.rowcount
-    connection.commit()
-    connection.close()
-
-    if rows_affected == 0:
-        return None
-
-    return {
-        "id": task_id,
-        "title": title,
-        "done": done
-    }
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE tasks SET title = %s, done = %s WHERE id = %s RETURNING id, title, done;",
+                (title, done, task_id)
+            )
+            updated_task = cur.fetchone()
+        conn.commit()
+        return updated_task
 
 def delete_task(task_id: int):
-    connection = get_connection()
-    cursor = connection.cursor()
-    cursor.execute(
-        "DELETE FROM tasks WHERE id = ?",
-        (task_id,)
-    )
-    rows_affected = cursor.rowcount
-    connection.commit()
-    connection.close()
-
-    return rows_affected > 0
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM tasks WHERE id = %s;", (task_id,))
+            deleted = cur.rowcount > 0
+        conn.commit()
+        return deleted
