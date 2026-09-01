@@ -3,3 +3,4 @@ uvicorn
 psycopg[binary]
 python-dotenv
 pydantic
+supabase
