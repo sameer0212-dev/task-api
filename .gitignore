@@ -2,3 +2,7 @@
 __pycache__/git status
 tasks.db
 .env
+
+# Scraper artifacts
+scraper/cache/
+scraper/output/
