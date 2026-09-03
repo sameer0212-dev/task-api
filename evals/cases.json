@@ -1,0 +1,34 @@
+[
+  {
+    "input": { "title": "Clean Code", "description": "A handbook of agile software craftsmanship" },
+    "expected_category": "Software Engineering"
+  },
+  {
+    "input": { "title": "The Hobbit", "description": "A fantasy novel about a hobbit who goes on an adventure" },
+    "expected_category": "Fiction"
+  },
+  {
+    "input": { "title": "Designing Data-Intensive Applications", "description": "The big ideas behind reliable, scalable, and maintainable systems" },
+    "expected_category": "Software Engineering"
+  },
+  {
+    "input": { "title": "Sapiens", "description": "A brief history of humankind" },
+    "expected_category": "Non-Fiction"
+  },
+  {
+    "input": { "title": "Atomic Habits", "description": "An easy & proven way to build good habits & break bad ones" },
+    "expected_category": "Self-Help"
+  },
+  {
+    "input": { "title": "Dune", "description": "A science fiction masterpiece set on the desert planet Arrakis" },
+    "expected_category": "Fiction"
+  },
+  {
+    "input": { "title": "Random Notes", "description": "asdfghjkl 12345 unstructured text" },
+    "expected_category": "Other"
+  },
+  {
+    "input": { "title": "Python Crash Course", "description": "A hands-on, project-based introduction to programming" },
+    "expected_category": "Software Engineering"
+  }
+]

@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from supabase import create_client, Client
+from app.routes.llm_enrich import router as enrich_router
 from dotenv import load_dotenv
 
 import database
@@ -27,6 +28,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="Task API")
 security = HTTPBearer()
+app.include_router(enrich_router)
 
 @app.on_event("startup")
 def startup_event():

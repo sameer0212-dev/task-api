@@ -4,3 +4,5 @@ psycopg[binary]
 python-dotenv
 pydantic
 supabase
+openai
+email-validator
