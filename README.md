@@ -1,6 +1,6 @@
-# Task API & Polite Scraper Workspace
+# Task API, LLM Enrichment & Polite Scraper Workspace
 
-A backend engineering monorepo containing projects focused on **REST API development, PostgreSQL, Docker containerization, and responsible web scraping**.
+A backend engineering monorepo containing projects focused on **REST API development, asynchronous LLM enrichment pipelines, PostgreSQL, Docker containerization, automated evaluation, and responsible web scraping**.
 
 ---
 
@@ -8,67 +8,90 @@ A backend engineering monorepo containing projects focused on **REST API develop
 
 ```text
 task-api/
-├── scraper/
-│   ├── src/                  # Scraper modules & Pydantic models
-│   ├── cache/                # Cached raw HTML files (git-ignored)
-│   ├── output/               # JSON outputs & run report (git-ignored)
-│   ├── main.py               # Scraper entrypoint
-│   └── README.md             # Scraper-specific documentation
+├── app/
+│   ├── llm/
+│   │   ├── client.py              # Async LLM client & defensive response parsing
+│   │   └── schemas.py             # Pydantic schemas & BookCategory enums
+│   │
+│   ├── routes/
+│   │   └── llm_enrich.py          # POST /llm/enrich endpoint
+│   │
+│   └── __init__.py
 │
-├── database.py               # FastAPI database configuration
-├── main.py                   # FastAPI application entrypoint
-├── Dockerfile                # FastAPI container definition
-├── compose.yaml              # Docker Compose configuration
-├── .env.example              # Environment variable template
+├── evals/
+│   ├── cases.json                 # Benchmark test cases
+│   └── run_eval.py                # Automated evaluation harness
+│
+├── prompts/
+│   └── enrich-v1.md               # Versioned enrichment system prompt
+│
+├── scraper/
+│   ├── src/                       # Scraper modules & Pydantic models
+│   ├── cache/                     # Cached HTML files (git-ignored)
+│   ├── output/                    # JSON outputs & run reports (git-ignored)
+│   ├── main.py                    # Scraper entrypoint
+│   └── README.md                  # Scraper-specific documentation
+│
+├── database.py                    # FastAPI database configuration
+├── main.py                        # FastAPI application entrypoint
+├── Dockerfile                     # FastAPI container definition
+├── compose.yaml                   # Docker Compose configuration
+├── .env.example                   # Environment variable template
 ├── .gitignore
-└── README.md                 # Root workspace documentation
+└── README.md                      # Root workspace documentation
 ```
 
 ---
 
 # 🛠️ Included Projects
 
-## 1. 🕷️ Polite Web Scraper
+## 1. 🧠 LLM Book Enrichment Service & Evals
 
-Located in:
+An asynchronous LLM-powered classification and metadata extraction pipeline that transforms raw book titles and descriptions into structured metadata.
 
-```text
-/scraper
-```
+The enrichment service produces:
 
-A resilient web scraping pipeline built to extract structured book data from **Books to Scrape** while following polite scraping practices.
+* Normalized book categories
+* Classification confidence scores
+* Key thematic tags
+* One-sentence summaries
+* Quality indicators
 
 ### Features
 
-* HTML fetching with `Requests`
-* HTML parsing with `BeautifulSoup4`
-* Pydantic-based data validation
-* Local HTML caching
-* Rate limiting between requests
-* Structured JSON output
-* Run/report generation
-* Resilient scraping workflow
+#### Strict Structured Output Parsing
 
-### Tech Stack
+LLM responses are validated against Pydantic `EnrichResponse` schemas to ensure predictable structured output.
 
-* Python 3
-* Requests
-* BeautifulSoup4
-* Pydantic
+#### Resilient Retry & Fallback Routing
 
-### Quick Run
+The service handles transient failures such as rate limits and timeouts using retry logic with exponential backoff.
 
-From the repository root:
-
-```bash
-python scraper/main.py
-```
-
-For detailed scraper architecture, execution instructions, rate-limiting behavior, and schema definitions, see:
+Unknown or invalid categories are normalized to:
 
 ```text
-scraper/README.md
+Other
 ```
+
+#### Quarantine Logging
+
+Unparseable or malformed upstream LLM responses are captured in:
+
+```text
+logs/quarantine.jsonl
+```
+
+This prevents malformed model output from unnecessarily causing `500 Internal Server Error` responses.
+
+#### Automated Evaluation Harness
+
+The evaluation suite tests the enrichment pipeline against multiple benchmark cases, including:
+
+* Fiction vs. non-fiction classification
+* Edge cases
+* Ambiguous content
+* Structured output compliance
+* Fallback behavior
 
 ---
 
@@ -76,43 +99,83 @@ scraper/README.md
 
 A RESTful **FastAPI task management service** backed by **PostgreSQL**.
 
-The complete application stack runs through **Docker Compose**, making the API and database easy to build and run consistently across environments.
+The application and database are orchestrated through **Docker Compose**, providing a reproducible development environment.
 
 ### Tech Stack
 
-* Python
+* Python 3.11+
 * FastAPI
+* AsyncOpenAI
 * PostgreSQL
 * SQLAlchemy
-* Pydantic
+* Pydantic v2
 * Docker
 * Docker Compose
 
 ---
 
-## ⚡ Quick Start
+# 3. 🕷️ Polite Web Scraper
 
-### 1. Configure environment variables
+Located in:
 
-Create your local `.env` file from the provided template:
-
-```bash
-cp .env.example .env
+```text
+/scraper
 ```
 
-On Windows PowerShell:
+A resilient scraping pipeline designed to extract structured book data from **Books to Scrape** while following responsible scraping practices.
+
+### Features
+
+* HTTP requests with `Requests`
+* HTML parsing with `BeautifulSoup4`
+* Pydantic data validation
+* Rate limiting
+* Local HTML caching
+* Structured JSON output
+* Run reports
+* Resilient extraction pipeline
+
+For scraper-specific execution instructions and implementation details, see:
+
+```text
+scraper/README.md
+```
+
+---
+
+# ⚡ Quick Start
+
+## 1. Configure Environment Variables
+
+Create your local `.env` file from the provided template.
+
+### PowerShell
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-### 2. Build and start the stack
+### Linux / macOS
+
+```bash
+cp .env.example .env
+```
+
+If you want to test the LLM enrichment service, make sure your LLM credentials are configured in `.env`.
+
+---
+
+## 2. Build and Start the Stack
 
 ```bash
 docker compose up --build
 ```
 
-### 3. Access the API
+Docker Compose will build the API container and start the required services, including PostgreSQL.
+
+---
+
+## 3. Access the API
 
 Once the containers are running:
 
@@ -122,26 +185,34 @@ Once the containers are running:
 | Swagger UI | http://localhost:8000/docs  |
 | ReDoc      | http://localhost:8000/redoc |
 
-Swagger UI can be used to interactively test all API endpoints.
+Swagger UI provides an interactive interface for testing the available API endpoints.
 
 ---
 
-# ⚙️ Task API Environment Variables
+# ⚙️ Environment Variables
 
 Create a `.env` file using `.env.example`.
 
-| Variable            | Description                  | Default                                   |
-| ------------------- | ---------------------------- | ----------------------------------------- |
-| `DATABASE_URL`      | PostgreSQL connection string | `postgresql://postgres:dev@db:5432/tasks` |
-| `POSTGRES_USER`     | PostgreSQL username          | `postgres`                                |
-| `POSTGRES_PASSWORD` | PostgreSQL password          | `dev`                                     |
-| `POSTGRES_DB`       | PostgreSQL database name     | `tasks`                                   |
+| Variable       | Description                             | Default                                   |
+| -------------- | --------------------------------------- | ----------------------------------------- |
+| `DATABASE_URL` | PostgreSQL connection string            | `postgresql://postgres:dev@db:5432/tasks` |
+| `LLM_API_KEY`  | API key for the configured LLM provider | `your_api_key_here`                       |
+| `LLM_BASE_URL` | Base URL for the LLM provider           | `https://openrouter.ai/api/v1`            |
+| `LLM_MODEL`    | Target LLM model                        | `openrouter/free`                         |
 
-> **Note:** These default credentials are intended for local development. Use secure credentials for production deployments.
+> **Security:** Never commit `.env` or API keys to version control.
 
 ---
 
-# 📡 Task API Endpoints
+# 📡 API Endpoints
+
+## LLM Enrichment
+
+| Method | Endpoint      | Description                                          | Status Codes        |
+| ------ | ------------- | ---------------------------------------------------- | ------------------- |
+| `POST` | `/llm/enrich` | Classify and enrich a raw book title and description | `200`, `422`, `500` |
+
+## Task Management
 
 | Method   | Endpoint      | Description                       | Status Codes        |
 | -------- | ------------- | --------------------------------- | ------------------- |
@@ -153,59 +224,58 @@ Create a `.env` file using `.env.example`.
 
 ---
 
-# 🧪 API Verification
+# 🧪 Automated Evaluation
 
-### Get all tasks
+The repository includes an automated evaluation harness for validating the LLM enrichment pipeline.
 
-Using cURL:
+Run the benchmark suite with:
 
 ```bash
-curl "http://localhost:8000/tasks"
+python evals/run_eval.py
 ```
 
-On Windows PowerShell, you can use:
+The evaluation suite currently contains **8 verification cases**.
 
-```powershell
-curl.exe "http://localhost:8000/tasks"
-```
+### Latest Evaluation Run
 
-Example response:
+| Metric         | Result            |
+| -------------- | ----------------- |
+| Date           | September 3, 2026 |
+| Prompt Version | `enrich-v1.md`    |
+| Test Cases     | 8                 |
+| Passed         | 8                 |
+| Failed         | 0                 |
+| Pass Rate      | **100.0%**        |
+| Status         | ✅ Passed          |
 
-```json
-[
-  {
-    "id": 1,
-    "title": "Build FastAPI App",
-    "done": true
-  },
-  {
-    "id": 2,
-    "title": "Containerize Stack with Postgres",
-    "done": false
-  }
-]
-```
+---
 
-You can also test the API directly through:
+# 📝 Prompt Versioning
+
+LLM instructions are maintained separately from application code.
+
+Current prompt:
 
 ```text
-http://localhost:8000/docs
+prompts/enrich-v1.md
 ```
+
+This allows prompt changes to be tracked independently and makes evaluation results easier to reproduce against specific prompt versions.
 
 ---
 
 # 🐳 Useful Docker Commands
 
-### Build and start the Task API
+### Build and start
 
 ```bash
 docker compose up --build
 ```
 
-### Run in detached mode
+### Build and start in detached mode
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 ### View running containers
@@ -214,13 +284,7 @@ docker compose up -d
 docker compose ps
 ```
 
-### View logs
-
-```bash
-docker compose logs
-```
-
-### Follow logs
+### Follow application logs
 
 ```bash
 docker compose logs -f
@@ -232,55 +296,98 @@ docker compose logs -f
 docker compose down
 ```
 
-### Stop the stack and remove database volumes
+### Stop the stack and remove volumes
 
 ```bash
 docker compose down -v
 ```
 
-> ⚠️ Removing volumes deletes the PostgreSQL data stored in Docker volumes.
+> ⚠️ Removing volumes deletes persistent PostgreSQL data stored in Docker volumes.
 
 ---
 
-# 🗄️ Database Verification
+# 🔄 System Overview
 
-The PostgreSQL database can be inspected directly from inside the running database container.
+The workspace brings together three backend components:
 
-For example:
+```text
+                  ┌─────────────────────┐
+                  │    Polite Scraper   │
+                  │   Books to Scrape   │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │   Book Records      │
+                  │ Title + Description │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │  LLM Enrichment     │
+                  │ Classification +    │
+                  │ Themes + Summary    │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │ Structured Output   │
+                  │ Pydantic Validation │
+                  └─────────────────────┘
 
-```bash
-docker exec -it task-api-db-1 \
-psql -U postgres -d tasks \
--c "SELECT * FROM tasks;"
+
+        ┌───────────────────────────────┐
+        │        Task API               │
+        │                               │
+        │ FastAPI ──► PostgreSQL        │
+        └───────────────────────────────┘
 ```
 
-This can be used to verify that tasks created through the API are correctly persisted in PostgreSQL.
-
 ---
 
-# 🎯 Learning Objectives
+# 🎯 Engineering Concepts Demonstrated
 
 This workspace demonstrates practical backend engineering concepts including:
 
-* REST API development
+* REST API design
 * CRUD operations
-* FastAPI application structure
-* Request and response validation
-* PostgreSQL database integration
+* FastAPI application architecture
+* Asynchronous LLM API integration
+* Structured LLM output validation
+* Pydantic v2 schemas
+* Retry and exponential backoff strategies
+* Defensive parsing
+* Failure isolation and quarantine logging
+* Automated LLM evaluation
+* Prompt versioning
+* PostgreSQL integration
+* SQLAlchemy
 * Docker containerization
 * Docker Compose orchestration
 * Environment-based configuration
-* HTTP requests and HTML parsing
-* Pydantic data validation
-* Web scraping with rate limiting
+* Web scraping
+* HTML parsing
+* Rate limiting
 * Local caching
 * Structured data extraction
-* Backend project organization
 
 ---
 
 # 📌 Project Status
 
-This repository serves as a backend engineering workspace containing progressively developed projects and assignments.
+This repository serves as a progressively developed **backend engineering workspace**, combining traditional backend systems with AI-powered data enrichment.
 
-Each project has its own implementation and can be run independently according to its respective documentation.
+The current workspace includes:
+
+* ✅ Containerized FastAPI Task API
+* ✅ PostgreSQL integration
+* ✅ Async LLM enrichment service
+* ✅ Structured Pydantic output validation
+* ✅ Retry and fallback handling
+* ✅ Quarantine logging
+* ✅ Versioned enrichment prompts
+* ✅ Automated evaluation suite
+* ✅ Polite web scraping pipeline
+* ✅ Local scraping cache and structured outputs
+
+---
